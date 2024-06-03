@@ -17,8 +17,7 @@ import numpy as np
 from scipy.sparse import diags
 
 from qiskit import QuantumCircuit
-from qiskit.quantum_info import Statevector
-from qiskit.opflow import I, Z, TensoredOp
+from qiskit.quantum_info import Statevector, SparsePauliOp
 
 from .linear_system_observable import LinearSystemObservable
 
@@ -81,7 +80,7 @@ class MatrixFunctional(LinearSystemObservable):
         self._main_diag = main_diag
         self._off_diag = off_diag
 
-    def observable(self, num_qubits: int) -> Union[TensoredOp, List[TensoredOp]]:
+    def observable(self, num_qubits: int) -> SparsePauliOp:
         """The observable operators.
 
         Args:
@@ -90,23 +89,26 @@ class MatrixFunctional(LinearSystemObservable):
         Returns:
             The observable as a list of sums of Pauli strings.
         """
-        zero_op = (I + Z) / 2
-        one_op = (I - Z) / 2
+        zero_op = SparsePauliOp(['I', 'Z'], coeffs=[1/2, 1/2])
+        one_op = SparsePauliOp(['I', 'Z'], coeffs=[1/2, -1/2])
         observables = []
         # First we measure the norm of x
-        observables.append(I ^ num_qubits)
+        observables.append(SparsePauliOp('I'*num_qubits))
         for i in range(num_qubits):
             j = num_qubits - i - 1
 
             # TODO this if can be removed once the bug in Opflow is fixed where
             # TensoredOp([X, TensoredOp([])]).eval() ends up in infinite recursion
             if i > 0:
+                tensored_op = one_op
+                for j in range(i-1):
+                    tensored_op = tensored_op.tensor(one_op)
                 observables += [
-                    (I ^ j) ^ zero_op ^ TensoredOp(i * [one_op]),
-                    (I ^ j) ^ one_op ^ TensoredOp(i * [one_op]),
+                    SparsePauliOp('I'*j) ^ zero_op ^ tensored_op,
+                    SparsePauliOp('I'*j) ^ one_op ^ tensored_op,
                 ]
             else:
-                observables += [(I ^ j) ^ zero_op, (I ^ j) ^ one_op]
+                observables += [SparsePauliOp('I'*j) ^ zero_op, SparsePauliOp('I'*j) ^ one_op]
 
         return observables
 

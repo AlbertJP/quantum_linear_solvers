@@ -17,14 +17,14 @@ from typing import Union, List
 import numpy as np
 
 from qiskit import QuantumCircuit
-from qiskit.opflow import TensoredOp
+from qiskit.quantum_info import SparsePauliOp
 
 
 class LinearSystemObservable(ABC):
     """An abstract class for linear system observables in Qiskit."""
 
     @abstractmethod
-    def observable(self, num_qubits: int) -> Union[TensoredOp, List[TensoredOp]]:
+    def observable(self, num_qubits: int) -> SparsePauliOp:
         """The observable operator.
 
         Args:
